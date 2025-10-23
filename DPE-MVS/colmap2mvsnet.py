@@ -303,8 +303,10 @@ def calc_score(inputs, images, points3d, extrinsic, args):
 
 def processing_single_scene(args):
 
-    image_dir = os.path.join(args.dense_folder, 'images')
-    model_dir = os.path.join(args.dense_folder, 'dslr_calibration_undistorted')
+    #image_dir = os.path.join(args.dense_folder, 'images')
+    image_dir = args.dense_folder
+    #model_dir = os.path.join(args.dense_folder, 'dslr_calibration_undistorted')
+    model_dir = os.path.join(args.dense_folder, 'sparse', '0')
     cam_dir = os.path.join(args.save_folder, 'cams')
     image_converted_dir = os.path.join(args.save_folder, 'images')
 
@@ -373,6 +375,7 @@ def processing_single_scene(args):
             if p3d_id == -1:
                 continue
             transformed = np.matmul(extrinsic[i+1], [points3d[p3d_id].xyz[0], points3d[p3d_id].xyz[1], points3d[p3d_id].xyz[2], 1])
+            #zs.append(np.item(transformed[2]))
             zs.append(transformed[2].item())
         depth_min = 0
         depth_max = 0
@@ -486,7 +489,7 @@ if __name__ == '__main__':
     parser.add_argument('--theta0', type=float, default=5)
     parser.add_argument('--sigma1', type=float, default=1)
     parser.add_argument('--sigma2', type=float, default=10)
-    parser.add_argument('--model_ext', type=str, default=".txt",  choices=[".txt", ".bin"], help='sparse model ext')
+    parser.add_argument('--model_ext', type=str, default=".bin",  choices=[".txt", ".bin"], help='sparse model ext')
 
     args = parser.parse_args()
 
