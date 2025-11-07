@@ -41,6 +41,17 @@ std::string ToFormatIndex(int index);
 template <typename TYPE>
 void RescaleMatToTargetSize(const cv::Mat &src, cv::Mat &dst, const cv::Size2i &target_size);
 
+void SaveFinalDepthOutputs(const cv::Mat& depth,
+                           const cv::Mat* pixel_states,
+                           const path& depth_vis_path,
+                           const path& depth_npy_path,
+                           bool save_visualization);
+
+void SaveFinalWeakOutput(const cv::Mat& weak,
+                         const path& weak_vis_path,
+                         const path& weak_npy_path,
+                         bool save_visualization);
+
 void RunFusion(const path &dense_folder, const std::vector<Problem> &problems);
 void RunFusion_TAT_Intermediate(const path &dense_folder, const std::vector<Problem> &problems);
 void RunFusion_TAT_advanced(const path &dense_folder, const std::vector<Problem> &problems);

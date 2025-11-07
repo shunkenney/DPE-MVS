@@ -3,6 +3,40 @@
 
 using namespace boost::filesystem;
 
+namespace {
+
+void CleanupIntermediateFiles(const Problem &problem, int round_num) {
+	const std::vector<std::string> intermediate_files = {
+		"weak.bin",
+		"depths.dmb",
+		"normals.dmb",
+		"selected_views.bin",
+		"neighbour.bin",
+		"neighbour_map.bin",
+		"weak_ncc_cost.bin"
+	};
+
+	for (const auto &file_name : intermediate_files) {
+		const path target = problem.result_folder / path(file_name);
+		if (exists(target)) {
+			remove(target);
+		}
+	}
+
+	for (int scale = 0; scale < round_num; ++scale) {
+		const path edge_path = problem.result_folder / path("edges_" + std::to_string(scale) + ".dmb");
+		const path label_path = problem.result_folder / path("labels_" + std::to_string(scale) + ".dmb");
+		if (exists(edge_path)) {
+			remove(edge_path);
+		}
+		if (exists(label_path)) {
+			remove(label_path);
+		}
+	}
+}
+
+} // namespace
+
 void GenerateSampleList(const path &dense_folder, std::vector<Problem> &problems)
 {
 	path cluster_list_path = dense_folder / path("pair.txt");
@@ -167,7 +201,8 @@ void ProcessProblem(const Problem &problem) {
 		for (int c = 0; c < width; ++c) {
 			float4 plane_hypothesis = DPE.GetPlaneHypothesis(r, c);
 			depth.at<float>(r, c) = plane_hypothesis.w;
-			if (depth.at<float>(r, c) < DPE.GetDepthMin() || depth.at<float>(r, c) > DPE.GetDepthMax()) {
+			if (depth.at<float>(r, c) < DPE.GetDepthMin() ||
+			    depth.at<float>(r, c) > DPE.GetDepthMax()) {
 				depth.at<float>(r, c) = 0;
 				pixel_states.at<uchar>(r, c) = UNKNOWN;
 			}
@@ -183,6 +218,15 @@ void ProcessProblem(const Problem &problem) {
 	WriteBinMat(weak_path, pixel_states);
 	path selected_view_path = problem.result_folder / path("selected_views.bin");
 	WriteBinMat(selected_view_path, DPE.GetSelectedViews());
+
+	if (problem.params.is_final_level) {
+		const path depth_vis_path = problem.result_folder / path("depth.jpg");
+		const path depth_npy_path = problem.result_folder / path("depth.npy");
+		SaveFinalDepthOutputs(depth, &pixel_states, depth_vis_path, depth_npy_path, problem.save_visualization);
+		const path weak_vis_path = problem.result_folder / path("weak.jpg");
+		const path weak_npy_path = problem.result_folder / path("weak.npy");
+		SaveFinalWeakOutput(pixel_states, weak_vis_path, weak_npy_path, problem.save_visualization);
+	}
 
 	if (problem.show_medium_result) {
 		path depth_img_path = problem.result_folder / path("depth_" + std::to_string(problem.iteration) + ".jpg");
@@ -212,16 +256,32 @@ void ProcessProblem(const Problem &problem) {
 
 int main(int argc, char **argv) {
 	if (argc < 2) {
-		std::cerr << "USAGE: DPE dense_folder\n";
+		std::cerr << "USAGE: DPE dense_folder [gpu_index] [--no_fusion] [--no_viz]\n";
 		return EXIT_FAILURE;
 	}
 	path dense_folder(argv[1]);
+	bool skip_fusion = false;
+	bool skip_visualization = false;
 	path output_folder = dense_folder / path(OUT_NAME);
 	create_directory(output_folder);
 	// set cuda device for multi-gpu machine
 	int gpu_index = 0;
-	if (argc == 3) {
-		gpu_index = std::atoi(argv[2]);
+	bool gpu_set = false;
+	for (int i = 2; i < argc; ++i) {
+		std::string arg(argv[i]);
+		if (arg == "--no_fusion") {
+			skip_fusion = true;
+		} else if (arg == "--no_viz") {
+			skip_visualization = true;
+		} else {
+			if (!gpu_set) {
+				gpu_index = std::atoi(arg.c_str());
+				gpu_set = true;
+			} else {
+				std::cerr << "Unknown argument: " << arg << std::endl;
+				return EXIT_FAILURE;
+			}
+		}
 	}
 	cudaSetDevice(gpu_index);
 	// generate problems
@@ -236,12 +296,15 @@ int main(int argc, char **argv) {
 
 	int round_num = ComputeRoundNum(problems);
 	for (auto &problem : problems) {
+		problem.show_medium_result = false;
+		problem.save_visualization = !skip_visualization;
 		problem.params.max_scale_size = 1;
 		for (int i = 0; i < round_num; ++i) {
 			problem.scale_size = static_cast<int>(std::pow(2, round_num - 1 - i)); // scale 
 			GetProblemEdges(problem); // 注意要先得到 scale_size
 			problem.params.max_scale_size = MAX(problem.scale_size, problem.params.max_scale_size);
 		}
+		problem.params.output_flags = OUT_WEAK | OUT_DEPTH;
 	}
 
 	std::cout << "Round nums: " << round_num << std::endl;
@@ -268,6 +331,7 @@ int main(int argc, char **argv) {
 				params.max_iterations = 3;
 				params.weak_peak_radius = 6;
 			}
+			problem.params.is_final_level = false;
 			ProcessProblem(problem);
 		}
 		iteration_index++;
@@ -292,6 +356,11 @@ int main(int argc, char **argv) {
 					params.max_iterations = 3;
 					params.weak_peak_radius = MAX(4 - 2 * j, 2);
 				}
+				// 「最後の i かつ最後の j(=2)」だけ true にする
+    			const bool is_last_call_of_pyramid =
+    			    (i == round_num - 1) && (j == 2);
+
+    			problem.params.is_final_level = is_last_call_of_pyramid;
 				ProcessProblem(problem);
 			}
 			iteration_index++;
@@ -299,21 +368,13 @@ int main(int argc, char **argv) {
 		std::cout << "Round: " << i << " done\n";
 	}
 
-	RunFusion(dense_folder, problems);
-	{// delete files
-		for (size_t i = 0; i < problems.size(); ++i) {
-			const auto &problem = problems[i];
-			remove(problem.result_folder / path("weak.bin"));
-			remove(problem.result_folder / path("depths.dmb"));
-			remove(problem.result_folder / path("normals.dmb"));
-			remove(problem.result_folder / path("selected_views.bin"));
-			remove(problem.result_folder / path("neighbour.bin")); 
-			remove(problem.result_folder / path("neighbour_map.bin"));
-			for (int j = 0; j < round_num; j++) {
-				remove(problem.result_folder / path("edges_" + std::to_string(j) + ".dmb"));
-				remove(problem.result_folder / path("labels_" + std::to_string(j) + ".dmb"));
-			}
-		}
+	if (!skip_fusion) {
+		RunFusion(dense_folder, problems);
+	} else {
+		std::cout << "Skipping fusion step due to --no_fusion flag.\n";
+	}
+	for (const auto &problem : problems) {
+		CleanupIntermediateFiles(problem, round_num);
 	}
 	std::cout << "All done\n";
 	return EXIT_SUCCESS;

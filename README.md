@@ -1,4 +1,10 @@
 # DPE-MVS
+./build/DPE output_walking1 0 --no_viz --no_fusion
+Args:
+  1st. input folder path
+  2nd. GPU index
+  - --no_viz: If provided, some visualization jpg file will not be created.
+  - --no_fusion: If provided, point clouds .ply file will not be created.
 
 ## Overview
 

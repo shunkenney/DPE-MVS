@@ -1,2 +1,3 @@
-CUDA_VISIBLE_DEVICES=1 python DPE-MVS/colmap2mvsnet.py --dense_folder dataset/lunch --save_folder output_lunch
-CUDA_VISIBLE_DEVICES=1 ./build/DPE output_lunch
+python DPE-MVS/colmap2mvsnet.py --dense_folder ../colmap_anno/lane/walking1 --save_folder output_walking1
+echo "Finished colmap2mvsnet.py"
+./build/DPE output_walking1 0 --no_viz --no_fusion

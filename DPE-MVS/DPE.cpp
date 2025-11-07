@@ -1,4 +1,6 @@
 #include "DPE.h"
+#include <cstdint>
+#include <cmath>
 
 #define _JACOBI_ROTATE(a, i, j, k, l) \
 	g = (a)[j][i]; \
@@ -1724,4 +1726,147 @@ void ExportDepthImagePointCloud(
 	}
 
 	ExportPointCloud(point_cloud_path, PointCloud);
+}
+
+namespace {
+
+bool WriteFloatMatAsNpy(const path& out_path, const cv::Mat& mat) {
+	if (mat.empty()) {
+		return false;
+	}
+	CV_Assert(mat.type() == CV_32F);
+	cv::Mat contiguous = mat.isContinuous() ? mat : mat.clone();
+	std::ofstream out(out_path.string(), std::ios::binary);
+	if (!out.good()) {
+		std::cerr << "Failed to open npy file for writing: " << out_path << std::endl;
+		return false;
+	}
+	const char magic[] = "\x93NUMPY";
+	out.write(magic, 6);
+	const uint8_t major = 1;
+	const uint8_t minor = 0;
+	out.put(static_cast<char>(major));
+	out.put(static_cast<char>(minor));
+	std::string header = "{'descr': '<f4', 'fortran_order': False, 'shape': (" +
+		std::to_string(mat.rows) + ", " + std::to_string(mat.cols) + "), }";
+	header.push_back(' ');
+	while ((10 + header.size()) % 16 != 0) {
+		header.push_back(' ');
+	}
+	header.back() = '\n';
+	const uint16_t header_len = static_cast<uint16_t>(header.size());
+	out.write(reinterpret_cast<const char*>(&header_len), sizeof(header_len));
+	out.write(header.data(), header.size());
+	const size_t elem_count = static_cast<size_t>(contiguous.total());
+	out.write(reinterpret_cast<const char*>(contiguous.ptr<float>(0)), elem_count * sizeof(float));
+	return out.good();
+}
+
+bool WriteInt8MatAsNpy(const path& out_path, const cv::Mat& mat) {
+	if (mat.empty()) {
+		return false;
+	}
+	CV_Assert(mat.type() == CV_8S);
+	cv::Mat contiguous = mat.isContinuous() ? mat : mat.clone();
+	std::ofstream out(out_path.string(), std::ios::binary);
+	if (!out.good()) {
+		std::cerr << "Failed to open npy file for writing: " << out_path << std::endl;
+		return false;
+	}
+	const char magic[] = "\x93NUMPY";
+	out.write(magic, 6);
+	const uint8_t major = 1;
+	const uint8_t minor = 0;
+	out.put(static_cast<char>(major));
+	out.put(static_cast<char>(minor));
+	std::string header = "{'descr': '|i1', 'fortran_order': False, 'shape': (" +
+		std::to_string(mat.rows) + ", " + std::to_string(mat.cols) + "), }";
+	header.push_back(' ');
+	while ((10 + header.size()) % 16 != 0) {
+		header.push_back(' ');
+	}
+	header.back() = '\n';
+	uint16_t header_len = static_cast<uint16_t>(header.size());
+	out.write(reinterpret_cast<const char*>(&header_len), sizeof(header_len));
+	out.write(header.data(), header.size());
+	const size_t elem_count = static_cast<size_t>(contiguous.total());
+	out.write(reinterpret_cast<const char*>(contiguous.ptr<int8_t>(0)), elem_count * sizeof(int8_t));
+	return out.good();
+}
+
+} // namespace
+
+void SaveFinalDepthOutputs(const cv::Mat& depth,
+                           const cv::Mat* pixel_states,
+                           const path& depth_vis_path,
+                           const path& depth_npy_path,
+                           bool save_visualization) {
+  if (depth.empty()) {
+    return;
+  }
+  cv::Mat depth_copy = depth.clone();
+  for (int r = 0; r < depth_copy.rows; ++r) {
+    float* ptr = depth_copy.ptr<float>(r);
+    const uchar* state_ptr = (pixel_states && !pixel_states->empty() &&
+                              pixel_states->size() == depth.size()) ?
+                                 pixel_states->ptr<uchar>(r) : nullptr;
+    for (int c = 0; c < depth_copy.cols; ++c) {
+      float& val = ptr[c];
+      if (!std::isfinite(val)) {
+        val = 0.0f;
+      }
+      if (state_ptr && state_ptr[c] == UNKNOWN) {
+        val = 0.0f;
+      }
+    }
+  }
+
+  WriteFloatMatAsNpy(depth_npy_path, depth_copy);
+
+  if (save_visualization) {
+    cv::Mat valid_mask = depth_copy > 0.0f;
+    double minv = 0.0;
+    double maxv = 0.0;
+    if (cv::countNonZero(valid_mask) > 0) {
+      cv::minMaxLoc(depth_copy, &minv, &maxv, nullptr, nullptr, valid_mask);
+    } else {
+      cv::minMaxLoc(depth_copy, &minv, &maxv);
+    }
+    if (std::abs(maxv - minv) < 1e-6) {
+      maxv = minv + 1.0;
+    }
+    ShowDepthMap(depth_vis_path, depth_copy, static_cast<float>(minv), static_cast<float>(maxv));
+  }
+}
+
+void SaveFinalWeakOutput(const cv::Mat& weak,
+                         const path& weak_vis_path,
+                         const path& weak_npy_path,
+                         bool save_visualization) {
+  if (weak.empty()) {
+    return;
+  }
+  if (save_visualization) {
+    ShowWeakImage(weak_vis_path, weak);
+  }
+  cv::Mat weak_labels(weak.size(), CV_8SC1);
+  for (int r = 0; r < weak.rows; ++r) {
+    const uchar* src = weak.ptr<uchar>(r);
+    int8_t* dst = weak_labels.ptr<int8_t>(r);
+    for (int c = 0; c < weak.cols; ++c) {
+      switch (src[c]) {
+        case STRONG:
+          dst[c] = 2;
+          break;
+        case WEAK:
+          dst[c] = 1;
+          break;
+        case UNKNOWN:
+        default:
+          dst[c] = 0;
+          break;
+      }
+    }
+  }
+  WriteInt8MatAsNpy(weak_npy_path, weak_labels);
 }

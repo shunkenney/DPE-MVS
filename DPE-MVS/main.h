@@ -30,6 +30,7 @@
 #include <cstdarg>
 #include <random>
 #include <unordered_map>
+#include <cmath>
 // Includes Boost filesystem
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -76,6 +77,16 @@ enum PixelState {
 	UNKNOWN
 };
 
+// 出力内容フラグ
+enum OutputFlags : unsigned {
+    OUT_NONE       = 0,
+    OUT_DEPTH      = 1 << 0,  // depth 可視化/保存
+    OUT_WEAK       = 1 << 1,  // weak 可視化/保存
+    OUT_DEBUG      = 1 << 2,  // デバッグ用途の中間可視化/保存
+    OUT_COMPLEX    = OUT_DEBUG,
+    OUT_NEIGHBOURS = OUT_DEBUG,
+};
+
 struct PatchMatchParams {
 	int max_iterations = 3;
 	int num_images = 5;
@@ -104,6 +115,9 @@ struct PatchMatchParams {
 	float ransac_threshold = 0.005;
 	float geom_factor = 0.2f;
 	RunState state;
+
+	unsigned output_flags = OUT_NONE; // 何を出すか（ビット和）
+    bool is_final_level = false;      // 最終レベルのとき true（呼び出し側でセット）
 };
 
 struct Problem {
@@ -115,6 +129,7 @@ struct Problem {
 	int scale_size = 1;
 	PatchMatchParams params;
 	bool show_medium_result = true;
+	bool save_visualization = true;
 	int iteration;
 };
 

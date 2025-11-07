@@ -320,6 +320,8 @@ def processing_single_scene(args):
 
     cameras, images, points3d = read_model(model_dir, args.model_ext)
     num_images = len(list(images.items()))
+    if args.debug:
+        num_images = min(num_images, 50)
 
     param_type = {
         'SIMPLE_PINHOLE': ['f', 'cx', 'cy'],
@@ -354,6 +356,9 @@ def processing_single_scene(args):
 
     new_images = {}
     for i, image_id in enumerate(sorted(images.keys())):
+        if args.debug:
+            if i >= num_images:
+                break
         new_images[i+1] = images[image_id]
     images = new_images
 
@@ -478,6 +483,7 @@ def processing_single_scene(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert colmap camera')
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")
 
     parser.add_argument('--dense_folder', required=True, type=str, help='dense_folder.')
     parser.add_argument('--save_folder', required=True, type=str, help='save_folder.')
