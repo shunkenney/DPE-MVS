@@ -1,9 +1,14 @@
-#include "main.h"
+#include "dpe_pipeline.h"
+#include "DPE.h"           // EdgeSegment, WriteBinMat, SaveFinal* など
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+#include "dpe_types.h"
 #include "DPE.h"
 
 using namespace boost::filesystem;
 
-namespace {
 
 void CleanupIntermediateFiles(const Problem &problem, int round_num) {
 	const std::vector<std::string> intermediate_files = {
@@ -34,8 +39,6 @@ void CleanupIntermediateFiles(const Problem &problem, int round_num) {
 		}
 	}
 }
-
-} // namespace
 
 void GenerateSampleList(const path &dense_folder, std::vector<Problem> &problems)
 {
@@ -252,134 +255,4 @@ void ProcessProblem(const Problem &problem) {
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	std::cout << "Processing image: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << " done!" << std::endl;
 	std::cout << "Cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
-}
-
-int main(int argc, char **argv) {
-	if (argc < 2) {
-		std::cerr << "USAGE: DPE dense_folder [gpu_index] [--no_fusion] [--no_viz] [--no_weak]\n";
-		return EXIT_FAILURE;
-	}
-	path dense_folder(argv[1]);
-	bool skip_fusion = false;
-	bool skip_visualization = false;
-	bool skip_weak_npy = false;
-	path output_folder = dense_folder / path(OUT_NAME);
-	create_directory(output_folder);
-	// set cuda device for multi-gpu machine
-	int gpu_index = 0;
-	bool gpu_set = false;
-	for (int i = 2; i < argc; ++i) {
-		std::string arg(argv[i]);
-		if (arg == "--no_fusion") {
-			skip_fusion = true;
-		} else if (arg == "--no_viz") {
-			skip_visualization = true;
-		} else if (arg == "--no_weak") {
-			skip_weak_npy = true;
-		} else {
-			if (!gpu_set) {
-				gpu_index = std::atoi(arg.c_str());
-				gpu_set = true;
-			} else {
-				std::cerr << "Unknown argument: " << arg << std::endl;
-				return EXIT_FAILURE;
-			}
-		}
-	}
-	cudaSetDevice(gpu_index);
-	// generate problems
-	std::vector<Problem> problems;
-	GenerateSampleList(dense_folder, problems);
-	if (!CheckImages(problems)) {
-		std::cerr << "Images may error, check it!\n";
-		return EXIT_FAILURE;
-	}
-	int num_images = problems.size();
-	std::cout << "There are " << num_images << " problems needed to be processed!" << std::endl;
-
-	int round_num = ComputeRoundNum(problems);
-	for (auto &problem : problems) {
-		problem.show_medium_result = false;
-		problem.save_visualization = !skip_visualization;
-		problem.save_weak_npy = !skip_weak_npy;
-		problem.params.max_scale_size = 1;
-		for (int i = 0; i < round_num; ++i) {
-			problem.scale_size = static_cast<int>(std::pow(2, round_num - 1 - i)); // scale 
-			GetProblemEdges(problem); // 注意要先得到 scale_size
-			problem.params.max_scale_size = MAX(problem.scale_size, problem.params.max_scale_size);
-		}
-		problem.params.output_flags = OUT_WEAK | OUT_DEPTH;
-	}
-
-	std::cout << "Round nums: " << round_num << std::endl;
-	int iteration_index = 0;
-	for (int i = 0; i < round_num; ++i) {
-		for (auto &problem : problems) {
-			problem.iteration = iteration_index;
-			problem.scale_size = static_cast<int>(std::pow(2, round_num - 1 - i)); // scale 
-			problem.params.scale_size = problem.scale_size;
-			{
-				auto &params = problem.params;
-				if (i == 0) {
-					params.state = FIRST_INIT;
-					params.use_APD = false;
-					params.use_edge = false;
-				} else {
-					params.state = REFINE_INIT;
-					params.use_APD = true;
-					params.use_edge = true;
-					params.ransac_threshold = 0.01 - i * 0.00125;
-					params.rotate_time = MIN(static_cast<int>(std::pow(2, i)), 4);
-				}
-				params.geom_consistency = false;
-				params.max_iterations = 3;
-				params.weak_peak_radius = 6;
-			}
-			problem.params.is_final_level = false;
-			ProcessProblem(problem);
-		}
-		iteration_index++;
-		for (int j = 0; j < 3; ++j) {
-			for (auto &problem : problems) {
-				problem.iteration = iteration_index;
-				problem.scale_size = static_cast<int>(std::pow(2, round_num - 1 - i)); // scale 
-				problem.params.scale_size = problem.scale_size;
-				{
-					auto &params = problem.params;
-					params.state = REFINE_ITER;
-					if (i == 0) {
-						params.use_APD = false;
-						params.use_edge = false;
-					} else {
-						params.use_APD = true;
-						params.use_edge = true;
-					}
-					params.ransac_threshold = 0.01 - i * 0.00125;
-					params.rotate_time = MIN(static_cast<int>(std::pow(2, i)), 4);
-					params.geom_consistency = true;
-					params.max_iterations = 3;
-					params.weak_peak_radius = MAX(4 - 2 * j, 2);
-				}
-				// 「最後の i かつ最後の j(=2)」だけ true にする
-    			const bool is_last_call_of_pyramid =
-    			    (i == round_num - 1) && (j == 2);
-
-    			problem.params.is_final_level = is_last_call_of_pyramid;
-				ProcessProblem(problem);
-			}
-			iteration_index++;
-		}
-		std::cout << "Round: " << i << " done\n";
-	}
-
-	if (!skip_fusion) {
-		RunFusion(dense_folder, problems);
-	} else {
-		std::cout << "Skipping fusion step due to --no_fusion flag.\n";
-	}
-	for (const auto &problem : problems) {
-		CleanupIntermediateFiles(problem, round_num);
-	}
-	std::cout << "All done\n";
-	return EXIT_SUCCESS;
 }

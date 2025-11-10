@@ -1,56 +1,36 @@
 # DPE-MVS
-./build/DPE output_walking1 0 --no_viz --no_fusion  --no_weak
+
+## Setup with `uv`
+1. Make sure system dependencies such as CUDA, Boost (filesystem/system), and OpenCV are installed (see `setup.sh` for apt packages that are still required).
+2. From the project root run:
+
+   ```bash
+   uv sync
+   ```
+
+   This creates a `.venv`, installs the build toolchain (`cmake`, `ninja`, `pybind11`, `scikit-build-core`), and builds the `_dpe` extension in editable mode.
+
+3. Use the environment for any tooling:
+
+   ```bash
+   # Convert COLMAP output if needed
+   uv run python python/DPE_MVS/colmap2mvsnet.py \
+     --dense_folder ../colmap_anno/lane/walking1 \
+     --save_folder output
+
+   # Run the pipeline directly from Python
+   uv run python -c "from DPE_MVS import dpe_mvs; dpe_mvs('output', gpu_index=0, fusion=False, viz=False, weak=False)"
+   ```
+
+If you prefer the legacy binary interface, build with CMake inside the synced environment and run `./build/DPE` exactly as before:
+
+```
+./build/DPE output_walking1 0 --no_viz --no_fusion --no_weak
+```
+
 Args:
-  1st. input folder path
-  2nd. GPU index
-  - --no_viz: If provided, some visualization jpg file will not be created.
-  - --no_fusion: If provided, point clouds .ply file will not be created.
-  - --no_weak: If provided, weak.jpg will be not created.
-
-## Overview
-
-![Overview](overview.png)
-
-## About
-
-The paper has been released and can be found at [Dual-Level Precision Edges Guided Multi-View Stereo with Accurate Planarization](https://arxiv.org/abs/2412.20328).
-
-If you find this project useful for your research, please cite:
->
-    @inproceedings{chen2025dual,
-      title={Dual-Level Precision Edges Guided Multi-View Stereo with Accurate Planarization},
-      author={Chen, Kehua and Yuan, Zhenlong and Mao, Tianlu and Wang, Zhaoqi},
-      booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
-      volume={39},
-      number={2},
-      pages={2105--2113},
-      year={2025}
-    }
-
-## Dependencies
-The code has been tested on Ubuntu 20.04 with Nvidia RTX 3090.
-
-- [Cuda](https://developer.nvidia.cn/zh-cn/cuda-toolkit) >= 10.2
-- [OpenCV](https://opencv.org/) >= 3.3.0
-- [Boost](https://www.boost.org/) >= 1.62.0
-- [cmake](https://cmake.org/) >= 2.8
-
-**Besides make sure that your [GPU Compute Capability](https://en.wikipedia.org/wiki/CUDA) matches the CMakeList.txt!!!** Otherwise you won't get the depth results! For example, according to [GPU Compute Capability](https://en.wikipedia.org/wiki/CUDA), RTX3080's Compute Capability is 8.6. So you should set the cuda compilation parameter 'arch=compute_86,code=sm_86' or add a '-gencode arch=compute_86,code=sm_86'.
-
-## Usage
-- Compile
->
-    mkdir build & cd build
-    cmake ..
-    make
-
-- Test
->
-    Use script colmap2mvsnet_acm.py to convert COLMAP SfM result to MVS input   
-    Run ./DPE $data_folder to get reconstruction results.
-    The result will be saved in the folder $data_folder/DPE, and the point cloud is saved as "DPE.ply"
-
-If you need to filter out the sky during point cloud fusion, you can use a segmentation approach. Please refer to [MP-MVS](https://github.com/RongxuanTan/MP-MVS) and save the segmentation results in the $data_folder/blocks directory.
-
-## Acknowledgements
-This code largely benefits from the following repositories: [APD-MVS](https://github.com/whoiszzj/APD-MVS), [HPM-MVS](https://github.com/CLinvx/HPM-MVS). Thanks to their authors for opening the source of their excellent works!
+  1st. input folder path  
+  2nd. GPU index  
+  - `--no_viz`: If provided, some visualization jpg files will not be created.  
+  - `--no_fusion`: If provided, point-cloud `.ply` files will not be created.  
+  - `--no_weak`: If provided, `weak.jpg` will not be created.

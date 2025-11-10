@@ -1,0 +1,36 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.10",
+  "pybind11>=2.12",
+  "pybind11[global]>=2.12",
+  "cmake>=3.26",
+  "ninja>=1.11",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "DPE_MVS"
+version = "0.0.0"
+description = "Python bindings for DPE-MVS"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "cmake>=3.26",
+  "ninja>=1.11",
+  "pybind11[global]>=2.12",
+]
+
+[tool.scikit-build]
+cmake.verbose = true
+wheel.packages = ["python/DPE_MVS"]
+
+[tool.scikit-build.sdist]
+include = [
+  "CMakeLists.txt",
+  "pyproject.toml",
+  "src/**",
+  "python/DPE_MVS/**",
+]
+
+[tool.scikit-build.cmake.define]
+DPE_CUDA_ARCHS = "86"

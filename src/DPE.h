@@ -1,6 +1,6 @@
 #ifndef _DPE_H_
 #define _DPE_H_
-#include "main.h"
+#include "dpe_types.h"
 
 #define CUDA_SAFE_CALL(error) CudaSafeCall(error, __FILE__, __LINE__)
 #define CUDA_CHECK_ERROR() CudaCheckError(__FILE__, __LINE__)
