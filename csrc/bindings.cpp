@@ -5,7 +5,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/iostream.h>
 
-#include "dpe_api.h"   // It's directly under src, so relative include is OK.
+#include "dpe_api.h"
 #include <iostream>
 
 namespace py = pybind11;
