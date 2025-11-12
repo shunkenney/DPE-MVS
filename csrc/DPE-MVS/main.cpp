@@ -329,7 +329,7 @@ bool CheckImages(const std::vector<Problem> &problems) {
 }
 
 void GetProblemEdges(const Problem &problem) {
-	std::cout << "Getting image edges: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << "..." << std::endl;
+	//std::cout << "Getting image edges: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << "..." << std::endl;
 	int scale = 0;
 	while((1 << scale) < problem.scale_size) scale++;
 
@@ -344,7 +344,7 @@ void GetProblemEdges(const Problem &problem) {
 	cv::Mat scaled_image_float;
 	cv::resize(src_img, scaled_image_float, cv::Size(new_cols, new_rows), 0, 0, cv::INTER_LINEAR);
 	scaled_image_float.convertTo(src_img, CV_8UC1);
-	std::cout << "size: " << new_cols << "x" << new_rows << "\n";
+	//std::cout << "size: " << new_cols << "x" << new_rows << "\n";
 
 	if (problem.params.use_edge) {
 		// path edge_path = problem.result_folder / path("edges.dmb");
@@ -356,7 +356,7 @@ void GetProblemEdges(const Problem &problem) {
 			std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 			cv::Mat edge = EdgeSegment(scale, src_img, 0, true, problem.params.high_res_img);
 			std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-			std::cout << "Fine edge cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+			//std::cout << "Fine edge cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 			WriteBinMat(edge_path, edge);
 			if (problem.show_medium_result) {
 				path ref_image_edge_path = problem.result_folder / path("rawedge_" + std::to_string(scale) + ".jpg");
@@ -375,7 +375,7 @@ void GetProblemEdges(const Problem &problem) {
 			std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 			cv::Mat label = EdgeSegment(scale, image_uint, 1, false, problem.params.high_res_img);
 			std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-			std::cout << "Coarse edge cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+			//std::cout << "Coarse edge cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 			WriteBinMat(label_path, label);
 			if (problem.show_medium_result) {
 				path ref_image_con_path = problem.result_folder / path("connect_" + std::to_string(scale) + ".jpg");
@@ -384,7 +384,7 @@ void GetProblemEdges(const Problem &problem) {
 		}
 	}
 
-	std::cout << "Getting image edges: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << " done!" << std::endl;
+	//std::cout << "Getting image edges: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << " done!" << std::endl;
 }
 
 int ComputeRoundNum(const std::vector<Problem> &problems) {
@@ -409,8 +409,8 @@ int ComputeRoundNum(const std::vector<Problem> &problems) {
 
 
 void ProcessProblem(const Problem &problem) {
-	std::cout << "Processing image: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << "..." << std::endl;
-    std::cout << "iteration: " << problem.iteration << std::endl;
+	//std::cout << "Processing image: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << "..." << std::endl;
+    //std::cout << "iteration: " << problem.iteration << std::endl;
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
 	DPE DPE(problem);
@@ -467,11 +467,11 @@ void ProcessProblem(const Problem &problem) {
 		}
 	}
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	std::cout << "Processing image: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << " done!" << std::endl;
-	std::cout << "Cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+	//std::cout << "Processing image: " << std::setw(8) << std::setfill('0') << problem.ref_image_id << " done!" << std::endl;
+	//std::cout << "Cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 }
 
-int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool viz, bool depth, bool normal, bool weak, bool edge) {
+int RunDPEPipeline(const path &dense_folder, int gpu_index, bool verbose, bool fusion, bool viz, bool depth, bool normal, bool weak, bool edge) {
 	path output_folder = dense_folder / path(OUT_NAME);
 	create_directory(output_folder);
 	// set cuda device for multi-gpu machine
@@ -484,9 +484,13 @@ int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool vi
 		return EXIT_FAILURE;
 	}
 	int num_images = problems.size();
-	std::cout << "There are " << num_images << " problems needed to be processed!" << std::endl;
+
+	if (verbose) {
+		std::cout << "There are " << num_images << " images to be processed!" << std::endl;
+	}
 
 	int round_num = ComputeRoundNum(problems);
+	const int iteration_num = round_num * 4;
 	for (auto &problem : problems) {
 		problem.params.max_scale_size = 1;
 		for (int i = 0; i < round_num; ++i) {
@@ -496,7 +500,10 @@ int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool vi
 		}
 	}
 
-	std::cout << "Round nums: " << round_num << std::endl;
+	if (verbose) {
+		std::cout << "There are " << round_num << " resolution stages for coarse-to-fine processing!" << std::endl;
+		std::cout << "Iteration nums: " << iteration_num << std::endl;
+	}
 	int iteration_index = 0;
 	for (int i = 0; i < round_num; ++i) {
 		for (auto &problem : problems) {
@@ -522,9 +529,11 @@ int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool vi
 			}
 			ProcessProblem(problem);
 		}
+		if (verbose) {
+			std::cout << "Iteration " << iteration_index + 1 << " / "<< iteration_num << " done" << std::endl;
+		}
 		iteration_index++;
 		for (int j = 0; j < 3; ++j) {
-			const bool export_results = (i == round_num - 1) && (j == 2);
 			for (auto &problem : problems) {
 				problem.iteration = iteration_index;
 				problem.scale_size = static_cast<int>(std::pow(2, round_num - 1 - i)); // scale 
@@ -547,9 +556,14 @@ int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool vi
 				}
 				ProcessProblem(problem);
 			}
+			if (verbose) {
+				std::cout << "Iteration " << iteration_index + 1 << " / "<< iteration_num << " done" << std::endl;
+			}
 			iteration_index++;
 		}
-		std::cout << "Round: " << i << " done\n";
+		if (verbose) {
+			std::cout << "Resolution up" << std::endl;
+		}
 	}
 
 	// Save final results as .npy
@@ -579,38 +593,43 @@ int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool vi
 			}
 		}
 	}
-	std::cout << "All done\n";
+	if (verbose) {
+		std::cout << "All done" << std::endl;
+	}
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
+	path dense_folder(argv[1]);
+
 	if (argc < 2) {
-		std::cerr << "USAGE: DPE dense_folder\n";
+		std::cerr << "USAGE: DPE dense_folder" << std::endl;
 		return EXIT_FAILURE;
 	}
-	path dense_folder(argv[1]);
 
 	int gpu_index = 0;
 	if (argc >= 3) {gpu_index = std::atoi(argv[2]);}
 
+	bool verbose = true;
+	if (argc >= 4) {verbose = std::atoi(argv[3]);}
+
 	bool viz = false;
-	if (argc >= 4) {viz = std::atoi(argv[3]);}
+	if (argc >= 5) {viz = std::atoi(argv[4]);}
 
 	bool fusion = false;
-	if (argc >= 5) {fusion = std::atoi(argv[4]);}
+	if (argc >= 6) {fusion = std::atoi(argv[5]);}
 
 	bool depth = true;
-	if (argc >= 6) {depth = std::atoi(argv[5]);}
+	if (argc >= 7) {depth = std::atoi(argv[6]);}
 
 	bool normal = false;
-	if (argc >= 7) {normal = std::atoi(argv[6]);}
+	if (argc >= 8) {normal = std::atoi(argv[7]);}
 
 	bool weak = false;
-	if (argc >= 8) {weak = std::atoi(argv[7]);}
+	if (argc >= 9) {weak = std::atoi(argv[8]);}
 
 	bool edge = false;
-	if (argc >= 9) {edge = std::atoi(argv[8]);}
+	if (argc >= 10) {edge = std::atoi(argv[9]);}
 
-
-	return RunDPEPipeline(dense_folder, gpu_index, fusion, viz, depth, normal, weak, edge);
+	return RunDPEPipeline(dense_folder, gpu_index, verbose, fusion, viz, depth, normal, weak, edge);
 }

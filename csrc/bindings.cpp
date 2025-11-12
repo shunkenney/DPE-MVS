@@ -12,6 +12,7 @@ namespace py = pybind11;
 
 static int dpe_mvs_py(const std::string& dense_folder,
                       int gpu_index,
+                      bool verbose,
                       bool fusion,
                       bool viz,
                       bool depth,
@@ -22,7 +23,7 @@ static int dpe_mvs_py(const std::string& dense_folder,
     py::scoped_ostream_redirect out(std::cout);
     py::scoped_ostream_redirect err(std::cerr, py::module_::import("sys").attr("stderr"));
 
-    int ret = RunDPEPipeline(dense_folder, gpu_index, fusion, viz, depth, normal, weak, edge);
+    int ret = RunDPEPipeline(dense_folder, gpu_index, verbose, fusion, viz, depth, normal, weak, edge);
     if (ret != 0) throw std::runtime_error("DPE-MVS failed with code " + std::to_string(ret));
     return ret;
 }
@@ -32,6 +33,7 @@ PYBIND11_MODULE(_dpe, m) {
     m.def("dpe_mvs", &dpe_mvs_py,
           py::arg("dense_folder"),
           py::arg("gpu_index") = 0,
+          py::arg("verbose") = true,
           py::arg("fusion") = false,
           py::arg("viz") = false,
           py::arg("depth") = true,

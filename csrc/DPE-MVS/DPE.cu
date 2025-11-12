@@ -3191,7 +3191,7 @@ void DPE::RunPatchMatch() {
 	}
 
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	std::cout << "Generate neighbours done. Cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+	//std::cout << "Generate neighbours done. Cost time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 	RandomInitialization << <grid_size_full, block_size_full >> > (helper_cuda);
 	CUDA_SAFE_CALL(cudaDeviceSynchronize());
 
@@ -3200,15 +3200,15 @@ void DPE::RunPatchMatch() {
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
 		RedPixelUpdateStrong << <grid_size_half, block_size_half >> > (i, helper_cuda);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		std::cout << "Iteration " << i << " strong done\n";
+		//std::cout << "Iteration " << i << " strong done\n";
 		RANSACToGetFitPlane << <grid_size_full, block_size_full >> > (helper_cuda);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		std::cout << "Compute normal done\n";
+		//std::cout << "Compute normal done\n";
 		BlackPixelUpdateWeak << <grid_size_half, block_size_half >> > (i, helper_cuda);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
 		RedPixelUpdateWeak << <grid_size_half, block_size_half >> > (i, helper_cuda);
 		CUDA_SAFE_CALL(cudaDeviceSynchronize());
-		std::cout << "Iteration " << i << " -weak- done\n";
+		//std::cout << "Iteration " << i << " -weak- done\n";
 	}
 	
 	GetDepthandNormal << <grid_size_full, block_size_full >> > (helper_cuda);

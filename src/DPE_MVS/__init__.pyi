@@ -1,6 +1,7 @@
 def dpe_mvs(
     dense_folder: str,
     gpu_index: int = 0,
+    verbose: bool = True,
     fusion: bool = False,
     viz: bool = False,
     depth: bool = True,

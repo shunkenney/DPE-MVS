@@ -47,6 +47,7 @@ from DPE_MVS import dpe_mvs
 dpe_mvs(
    dense_folder="path/to/DPEprepared/folder",  # type: str. 
    gpu_index=0,        # Optional. type: int. default = 0.
+   verbose=True    # Optional. If True, log will be printed.
    fusion=False,   # Optional. type: bool, default = False. If True, point clouds file (.ply) will be created, which causes overhead.
    viz=False,   # Optional. type: bool, default = False. If True, all visualization info will be saved, which causes overhead.
    depth=True,   # Optional. type: bool, default = False. If True, depth.npy will be created, which causes overhead.
@@ -58,7 +59,7 @@ dpe_mvs(
 ### Run DPE with C++ build
 Args and their order are the same as using as python library (above).
 ```
-./build/DPE "path/to/DPEprepared/folder" 0 false false true false false false
+./build/DPE "path/to/DPEprepared/folder" 0 true false false true false false false
 ```
 
 # Outputs (other than visualization)

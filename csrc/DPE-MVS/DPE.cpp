@@ -790,9 +790,9 @@ void DPE::InuputInitialization() {
 	params_host.num_images = (int)images.size();
 	num_images = (int)images.size();
 	// =================================================
-	std::cout << "Read images and camera done\n";
-	std::cout << "Depth range: " << params_host.depth_min << " " << params_host.depth_max << std::endl;
-	std::cout << "Num images: " << params_host.num_images << std::endl;
+	//std::cout << "Read images and camera done\n";
+	//std::cout << "Depth range: " << params_host.depth_min << " " << params_host.depth_max << std::endl;
+	//std::cout << "Num images: " << params_host.num_images << std::endl;
 	// =================================================
 	// scale images
 	if (problem.scale_size != 1) {
@@ -818,9 +818,9 @@ void DPE::InuputInitialization() {
 			cameras[i].width = width;
 			cameras[i].height = height;
 		}
-		std::cout << "Scale images and cameras done\n";
+		//std::cout << "Scale images and cameras done\n";
 	}
-	std::cout << "Image size: " << width << " * " << height << std::endl;
+	//std::cout << "Image size: " << width << " * " << height << std::endl;
 	// =================================================
 	// read depth form geom consistency
 	if (params_host.geom_consistency) {
@@ -852,9 +852,8 @@ void DPE::InuputInitialization() {
 		}
 		ReadBinMat(weak_info_path, weak_info_host);
 		if (weak_info_host.cols != width || weak_info_host.rows != height) {
-			std::cerr << "Weak info doesn't match the images' size!\n";
 			RescaleMatToTargetSize<uchar>(weak_info_host, weak_info_host, cv::Size(width, height));
-			std::cout << "Scale done\n";
+			//std::cout << "Scale done\n";
 		}
 		
 		neighbours_map_host = cv::Mat::zeros(weak_info_host.size(), CV_32SC1);
@@ -869,7 +868,7 @@ void DPE::InuputInitialization() {
 				}
 			}
 		}
-		std::cout << "Weak count: " << weak_count << " / " << weak_info_host.cols * weak_info_host.rows << " = " << (float)weak_count / (float)(weak_info_host.cols * weak_info_host.rows) * 100 << "%" << std::endl;
+		//std::cout << "Weak count: " << weak_count << " / " << weak_info_host.cols * weak_info_host.rows << " = " << (float)weak_count / (float)(weak_info_host.cols * weak_info_host.rows) * 100 << "%" << std::endl;
 	}
 	else {
 		weak_info_host = cv::Mat::zeros(height, width, CV_8UC1);
@@ -891,7 +890,6 @@ void DPE::InuputInitialization() {
 		ReadBinMat(depth_path, depth);
 		ReadBinMat(normal_path, normal);
 		if (depth.cols != width || depth.rows != height || normal.cols != width || normal.rows != height) {
-			std::cerr << "Depth and Normal doesn't match the images' size!\n";
 			RescaleMatToTargetSize<float>(depth, depth, cv::Size2i(width, height));
 			RescaleMatToTargetSize<cv::Vec3f>(normal, normal, cv::Size2i(width, height));
 		}
@@ -908,7 +906,6 @@ void DPE::InuputInitialization() {
 			path selected_view_path = problem.result_folder / path("selected_views.bin");
 			ReadBinMat(selected_view_path, selected_views_host);
 			if (selected_views_host.cols != width || selected_views_host.rows != height) {
-				std::cerr << "Select view doesn't match the images' size!\n";
 				RescaleMatToTargetSize<unsigned int>(selected_views_host, selected_views_host, cv::Size2i(width, height));
 			}
 		}
@@ -1250,7 +1247,7 @@ void RunFusion(const path &dense_folder, const std::vector<Problem> &problems)
 
 	for (int i = 0; i < num_images; ++i) {
 		const auto &problem = problems[i];
-		std::cout << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		// << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		path image_path = image_folder / path(ToFormatIndex(problem.ref_image_id) + ".jpg");
 		imageIdToindexMap.emplace(problem.ref_image_id, i);
 		cv::Mat image = cv::imread(image_path.string(), cv::IMREAD_COLOR);
@@ -1287,7 +1284,7 @@ void RunFusion(const path &dense_folder, const std::vector<Problem> &problems)
 	PointCloud.clear();
 
 	for (int i = 0; i < num_images; ++i) {
-		std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		//std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		const auto &problem = problems[i];
 		int ref_index = imageIdToindexMap[problem.ref_image_id];
 		const int cols = depths[ref_index].cols;
@@ -1405,7 +1402,7 @@ void RunFusion_TAT_Intermediate(const path &dense_folder, const std::vector<Prob
 
 	for (int i = 0; i < num_images; ++i) {
 		const auto &problem = problems[i];
-		std::cout << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		//std::cout << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		path image_path = image_folder / path(ToFormatIndex(problem.ref_image_id) + ".jpg");
 		imageIdToindexMap.emplace(problem.ref_image_id, i);
 		cv::Mat image = cv::imread(image_path.string(), cv::IMREAD_COLOR);
@@ -1456,7 +1453,7 @@ void RunFusion_TAT_Intermediate(const path &dense_folder, const std::vector<Prob
 	
 
 	for (int i = 0; i < num_images; ++i) {
-		std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		//std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		const auto &problem = problems[i];
 		int ref_index = imageIdToindexMap[problem.ref_image_id];
 		const int cols = depths[ref_index].cols;
@@ -1572,7 +1569,7 @@ void RunFusion_TAT_advanced(const path &dense_folder, const std::vector<Problem>
 
 	for (int i = 0; i < num_images; ++i) {
 		const auto &problem = problems[i];
-		std::cout << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		//std::cout << "Reading image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		path image_path = image_folder / path(ToFormatIndex(problem.ref_image_id) + ".jpg");
 		imageIdToindexMap.emplace(problem.ref_image_id, i);
 		cv::Mat image = cv::imread(image_path.string(), cv::IMREAD_COLOR);
@@ -1620,7 +1617,7 @@ void RunFusion_TAT_advanced(const path &dense_folder, const std::vector<Problem>
 	
 
 	for (int i = 0; i < num_images; ++i) {
-		std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
+		//std::cout << "Fusing image " << std::setw(8) << std::setfill('0') << i << "..." << std::endl;
 		const auto &problem = problems[i];
 		int ref_index = imageIdToindexMap[problem.ref_image_id];
 		const int cols = depths[ref_index].cols;

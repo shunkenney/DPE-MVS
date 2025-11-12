@@ -117,6 +117,6 @@ struct Problem {
 	int iteration;
 };
 
-int RunDPEPipeline(const path &dense_folder, int gpu_index, bool fusion, bool viz, bool depth, bool normal, bool weak, bool edge);
+int RunDPEPipeline(const path &dense_folder, int gpu_index, bool verbose, bool fusion, bool viz, bool depth, bool normal, bool weak, bool edge);
 
 #endif // !_MAIN_H_
