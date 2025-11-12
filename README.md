@@ -61,23 +61,20 @@ Args and their order are the same as using as python library (above).
 ./build/DPE "path/to/DPEprepared/folder" 0 false false true false false false
 ```
 
-### Outputs (other than visualization)
-- depth.npy
-   Depth map.
-   shape: [height, width]
-   type: np.float32
-- normal.npy
-   Normal map.
-   shape: [height, width, 3]
-   type: np.float32
-- weak.npy
-   Hold the confidence of each pixel. 0 is no confidence (should be discarded), 1 is weak confidence, 2 is strong confidence.
-   shape: [height, width]
-   type: np.int8
-- edge.npy
-   Hold edges. 0 is not edge, 1 is on the edge.
-   shape: [height, width]
-   type: np.int8
-
-
-
+# Outputs (other than visualization)
+### depth.npy  
+Depth map.  
+shape: [height, width]  
+type: np.float32  
+### normal.npy
+Normal map.  
+shape: [height, width, 3]  
+type: np.float32  
+### weak.npy
+Hold the confidence of each pixel. 0 is no confidence (should be discarded), 1 is weak confidence, 2 is strong confidence.  
+shape: [height, width]  
+type: np.int8  
+### edge.npy
+Hold edges. 0 is not edge, 1 is on the edge.  
+shape: [height, width]  
+type: np.int8  
