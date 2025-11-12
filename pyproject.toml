@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "DPE_MVS"
-version = "0.0.0"
+version = "0.0.1"
 description = "Python bindings for DPE-MVS"
 readme = "README.md"
 requires-python = ">=3.10"
