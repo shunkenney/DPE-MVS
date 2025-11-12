@@ -6,9 +6,12 @@ __all__ = ["dpe_mvs"]
 def dpe_mvs(
     dense_folder: str,
     gpu_index: int = 0,
-    fusion: bool = True,
+    fusion: bool = False,
     viz: bool = False,
+    depth: bool = True,
+    normal: bool = False,
     weak: bool = False,
+    edge: bool = False,
 ) -> int:
     """Run DPE-MVS pipeline from Python."""
-    return _native(dense_folder, gpu_index, fusion=fusion, viz=viz, weak=weak)
+    return _native(dense_folder, gpu_index, fusion, viz, depth, normal, weak, edge)

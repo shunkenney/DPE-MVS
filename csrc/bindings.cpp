@@ -1,11 +1,11 @@
 #include <Python.h>
-#include <frameobject.h>
-#include <internal/pycore_frame.h>
+#include <frameobject.h>  // TODO: Check if this is really needed
+#include <internal/pycore_frame.h>  // TODO: Check if this is really needed
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/iostream.h>
 
-#include "dpe_api.h"
+#include "main.h"
 #include <iostream>
 
 namespace py = pybind11;
@@ -14,15 +14,15 @@ static int dpe_mvs_py(const std::string& dense_folder,
                       int gpu_index,
                       bool fusion,
                       bool viz,
-                      bool weak) {
-    const bool no_fusion = !fusion;
-    const bool no_viz    = !viz;
-    const bool no_weak   = !weak;
+                      bool depth,
+                      bool normal,
+                      bool weak,
+                      bool edge) {
 
     py::scoped_ostream_redirect out(std::cout);
     py::scoped_ostream_redirect err(std::cerr, py::module_::import("sys").attr("stderr"));
 
-    int ret = run_dpe(dense_folder, gpu_index, no_fusion, no_viz, no_weak);
+    int ret = RunDPEPipeline(dense_folder, gpu_index, fusion, viz, depth, normal, weak, edge);
     if (ret != 0) throw std::runtime_error("DPE-MVS failed with code " + std::to_string(ret));
     return ret;
 }
@@ -32,8 +32,10 @@ PYBIND11_MODULE(_dpe, m) {
     m.def("dpe_mvs", &dpe_mvs_py,
           py::arg("dense_folder"),
           py::arg("gpu_index") = 0,
-          py::kw_only(),
-          py::arg("fusion") = true,
-          py::arg("viz")    = false,
-          py::arg("weak")   = false);
+          py::arg("fusion") = false,
+          py::arg("viz") = false,
+          py::arg("depth") = true,
+          py::arg("normal") = false,
+          py::arg("weak") = false,
+          py::arg("edge") = false);
 }

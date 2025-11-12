@@ -1,36 +1,83 @@
 # DPE-MVS
+This is python wrapper of DPE-MVS from [https://github.com/ckh0715/DPE-MVS].
 
-## Setup with `uv`
-1. Make sure system dependencies such as CUDA, Boost (filesystem/system), and OpenCV are installed (see `setup.sh` for apt packages that are still required).
-2. From the project root run:
+# Setup 
+## as a project with uv
+This guide is aimed for linux users.
+### 1. Install DPE-MVS dependencies.
+`sudo apt install -y libopencv-dev`
+### 2. Install uv
+`curl -LsSf https://astral.sh/uv/install.sh | sh`
+### 3. Build venv with uv
+`uv sync`
 
-   ```bash
-   uv sync
-   ```
-
-   This creates a `.venv`, installs the build toolchain (`cmake`, `ninja`, `pybind11`, `scikit-build-core`), and builds the `_dpe` extension in editable mode.
-
-3. Use the environment for any tooling:
-
-   ```bash
-   # Convert COLMAP output if needed
-   uv run python python/DPE_MVS/colmap2mvsnet.py \
-     --dense_folder ../colmap_anno/lane/walking1 \
-     --save_folder output
-
-   # Run the pipeline directly from Python
-   uv run python -c "from DPE_MVS import dpe_mvs; dpe_mvs('output', gpu_index=0, fusion=False, viz=False, weak=False)"
-   ```
-
-If you prefer the legacy binary interface, build with CMake inside the synced environment and run `./build/DPE` exactly as before:
-
+## as a python library in uv projects.
+### 1. Install DPE-MVS dependencies.
+`sudo apt install -y libopencv-dev`
+### 2. Add this project as a dependency.
+Edit root pyproject.toml as following
 ```
-./build/DPE output_walking1 0 --no_viz --no_fusion --no_weak
+[project]
+dependencies = [
+   "DPE_MVS"
+]
+[tool.uv.sources]
+DPE_MVS = { git = "<url/of/this/git-reop>" }
 ```
 
-Args:
-  1st. input folder path  
-  2nd. GPU index  
-  - `--no_viz`: If provided, some visualization jpg files will not be created.  
-  - `--no_fusion`: If provided, point-cloud `.ply` files will not be created.  
-  - `--no_weak`: If provided, `weak.jpg` will not be created.
+## as a C++ build by cmake
+```
+sudo apt install -y cmake libopencv-dev
+mkdir build
+cd build
+cmake ../csrc/DPE-MVS
+make
+cd ..
+```
+
+# How to call functions.
+### Prepare DPE
+```
+python src/DPE_MVS/colmap2mvsnet.py --dense_folder <path/to/colmap/model/folder> --save_folder <path/to/DPEprepared/folder>
+```
+### Run DPE as a python library
+```
+from DPE_MVS import dpe_mvs
+
+dpe_mvs(
+   dense_folder="path/to/DPEprepared/folder",  # type: str. 
+   gpu_index=0,        # Optional. type: int. default = 0.
+   fusion=False,   # Optional. type: bool, default = False. If True, point clouds file (.ply) will be created, which causes overhead.
+   viz=False,   # Optional. type: bool, default = False. If True, all visualization info will be saved, which causes overhead.
+   depth=True,   # Optional. type: bool, default = False. If True, depth.npy will be created, which causes overhead.
+   normal=False,   # Optional. type: bool, default = False. If True, normal.npy will be created, which causes overhead.
+   weak=False,   # Optional. type: bool, default = False. If True, weak.npy will be created, which causes overhead.
+   edge=False   # Optional. type: bool, default = False. If True, edge.npy will be created, which causes overhead.
+)
+```
+### Run DPE with C++ build
+Args and their order are the same as using as python library (above).
+```
+./build/DPE "path/to/DPEprepared/folder" 0 false false true false false false
+```
+
+### Outputs (other than visualization)
+- depth.npy
+   Depth map.
+   shape: [height, width]
+   type: np.float32
+- normal.npy
+   Normal map.
+   shape: [height, width, 3]
+   type: np.float32
+- weak.npy
+   Hold the confidence of each pixel. 0 is no confidence (should be discarded), 1 is weak confidence, 2 is strong confidence.
+   shape: [height, width]
+   type: np.int8
+- edge.npy
+   Hold edges. 0 is not edge, 1 is on the edge.
+   shape: [height, width]
+   type: np.int8
+
+
+

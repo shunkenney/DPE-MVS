@@ -3153,16 +3153,13 @@ void DPE::RunPatchMatch() {
 	GenEdgeInform << <grid_size_full, block_size_full >> > (helper_cuda);
 	CUDA_SAFE_CALL(cudaDeviceSynchronize());
 #ifdef DEBUG_COMPLEX
-    if (params_host.is_final_level && (params_host.output_flags & OUT_COMPLEX)) {
-        // ここに complex.jpg などのデバッグ保存を残す
-	    path complex_path = problem.result_folder / path("complex.jpg");
-	    cv::Mat complex_host(height, width, CV_32F);
-	    cudaMemcpy(complex_host.ptr<float>(0), complex_cuda, width * height * sizeof(float), cudaMemcpyDeviceToHost);
-	    
-	    cv::Mat visual_complex_mat;
-	    complex_host.convertTo(visual_complex_mat, CV_8U, 255.0);
-	    cv::imwrite(complex_path.string(), visual_complex_mat);
-    }
+	path complex_path = problem.result_folder / path("complex.jpg");
+	cv::Mat complex_host(height, width, CV_32F);
+	cudaMemcpy(complex_host.ptr<float>(0), complex_cuda, width * height * sizeof(float), cudaMemcpyDeviceToHost);
+	
+	cv::Mat visual_complex_mat;
+	complex_host.convertTo(visual_complex_mat, CV_8U, 255.0);
+	cv::imwrite(complex_path.string(), visual_complex_mat);
 #endif
 
 	FindNearestStrongPoint << <grid_size_full, block_size_full >> >(helper_cuda);
@@ -3176,9 +3173,7 @@ void DPE::RunPatchMatch() {
 	
 	if (problem.show_medium_result) { // write neighbour for visualization
 #ifdef DEBUG_NEIGHBOUR
-    if (params_host.is_final_level && (params_host.output_flags & OUT_NEIGHBOURS) && problem.show_medium_result) {
-  	// ここに complex.jpg などのデバッグ保存を残す
-	    path neighbour_map_path = problem.result_folder / path("neighbour_map.bin");
+		path neighbour_map_path = problem.result_folder / path("neighbour_map.bin");
 		path neighbour_path = problem.result_folder / path("neighbour.bin");
 		WriteBinMat(neighbour_map_path, neighbours_map_host);
 		short2 *neighbours_host = new short2[weak_count * NEIGHBOUR_NUM];
@@ -3192,7 +3187,6 @@ void DPE::RunPatchMatch() {
 			out.close();
 		}
 		delete[] neighbours_host;
-	}	
 #endif // DEBUG_NEIGHBOUR
 	}
 
@@ -3231,34 +3225,25 @@ void DPE::RunPatchMatch() {
 	LocalRefine << <grid_size_full, block_size_full >> > (helper_cuda);
 	CUDA_SAFE_CALL(cudaDeviceSynchronize());
 #ifdef DEBUG_COST_LINE
-    if (params_host.is_final_level && (params_host.output_flags & OUT_WEAK) && problem.show_medium_result) {
-    // ここに complex.jpg などのデバッグ保存を残す
+	{
+		// export for test
+		float *weak_ncc_cost_host = new float[width * height * 61];
+		cudaMemcpy(weak_ncc_cost_host, weak_ncc_cost_cuda, width * height * sizeof(float) * 61, cudaMemcpyDeviceToHost);
+		path weak_ncc_cost_path = problem.result_folder / path("weak_ncc_cost.bin");
 		{
-			// export for test
-			float *weak_ncc_cost_host = new float[width * height * 61];
-			cudaMemcpy(weak_ncc_cost_host, weak_ncc_cost_cuda, width * height * sizeof(float) * 61, cudaMemcpyDeviceToHost);
-			path weak_ncc_cost_path = problem.result_folder / path("weak_ncc_cost.bin");
-			{
-				ofstream out(weak_ncc_cost_path, std::ios_base::binary);
-				int p_cost_count = 61;
-				out.write((char *)&width, sizeof(int));
-				out.write((char *)&height, sizeof(int));
-				out.write((char *)&p_cost_count, sizeof(int));
-				out.write((char *)weak_ncc_cost_host, sizeof(float) * width * height * p_cost_count);
-				out.close();
-			}
-			delete[] weak_ncc_cost_host;
+			ofstream out(weak_ncc_cost_path, std::ios_base::binary);
+			int p_cost_count = 61;
+			out.write((char *)&width, sizeof(int));
+			out.write((char *)&height, sizeof(int));
+			out.write((char *)&p_cost_count, sizeof(int));
+			out.write((char *)weak_ncc_cost_host, sizeof(float) * width * height * p_cost_count);
+			out.close();
 		}
-    }
+		delete[] weak_ncc_cost_host;
+	}
 #endif // DEBUG_COST_LINE
-	CUDA_SAFE_CALL(cudaMemcpy(plane_hypotheses_host, plane_hypotheses_cuda,
-	                          sizeof(float4) * width * height, cudaMemcpyDeviceToHost));
-
-	weak_info_host.create(height, width, CV_8UC1);
-	CUDA_SAFE_CALL(cudaMemcpy(weak_info_host.ptr<uchar>(0), weak_info_cuda,
-	                          sizeof(uchar) * width * height, cudaMemcpyDeviceToHost));
-
-	selected_views_host.create(height, width, CV_32SC1);
-	CUDA_SAFE_CALL(cudaMemcpy(selected_views_host.ptr<unsigned int>(0), selected_views_cuda,
-	                          sizeof(unsigned int) * width * height, cudaMemcpyDeviceToHost));
+	cudaMemcpy(plane_hypotheses_host, plane_hypotheses_cuda, sizeof(float4) * width * height, cudaMemcpyDeviceToHost);
+	cudaMemcpy(weak_info_host.ptr<uchar>(0), weak_info_cuda, width * height * sizeof(uchar), cudaMemcpyDeviceToHost);
+	cudaMemcpy(selected_views_host.ptr<unsigned int>(0), selected_views_cuda, width * height * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+	CUDA_SAFE_CALL(cudaDeviceSynchronize());
 }

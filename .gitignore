@@ -1,4 +1,4 @@
 /build*
-/dataset
 /output*
 /.venv
+__pycache__
